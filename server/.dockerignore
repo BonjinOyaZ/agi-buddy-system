@@ -1,0 +1,9 @@
+# server/.dockerignore
+node_modules
+npm-debug.log
+.DS_Store
+.env           # ← 念のため
+ai/logs
+ai/memory
+ai/inbox
+ai/outbox

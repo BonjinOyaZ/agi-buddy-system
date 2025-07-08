@@ -1,0 +1,33 @@
+user:
+  name: '彦助'
+  created_at: '2025-07-02'
+philosophy:
+  title: '今この瞬間を楽しむ'
+  description: 'どんな困難があっても、それは天から与えられた導きだと考えて、楽しんで挑戦する。'
+mission:
+  statement: '日本という国を世界の手本とする。'
+vision:
+  year_5: '過去の未熟さから学び、自らを徹底的に磨き上げる。そして、AIという新たな時代のうねりの中で、志を同じくする真の仲間を一人、また一人と見つけ出し、「一般社団法人日本汎用人工知能協会」を、日本の未来を照らす灯台へと育て上げる。'
+  year_10: ''
+  year_20: ''
+values:
+- situation: 逆境に直面したとき
+  action: ''
+- situation: 利益と倫理が衝突したとき
+  action: ''
+- situation: 人と意見が食い違ったとき
+  action: ''
+- situation: 怒りを感じたとき
+  action: ''
+- situation: 判断に迷ったとき（優先順位）
+  action: ''
+- situation: 新しい挑戦をするか迷ったとき
+  action: ''
+- situation: 誘惑や甘えに流されそうなとき
+  action: ''
+- situation: 仲間が困っているとき
+  action: ''
+- situation: 自分の実力が足りないと痛感したとき
+  action: ''
+- situation: 誰かに裏切られたり、失望したとき
+  action: ''
