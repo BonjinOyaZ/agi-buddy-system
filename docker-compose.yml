@@ -1,12 +1,14 @@
+version: '3.8'
 services:
   chat-server:
     build: ./server
     env_file:
-      - ./zphilo/.env    # ← ここで zphilo/.env を参照
+      - ./zphilo/.env
     ports:
       - "3000:3000"
     volumes:
       - ./server/ai:/usr/src/app/ai
+      - ./zphilo:/usr/src/zphilo
 
   n8n:
     image: n8nio/n8n:latest
@@ -14,7 +16,7 @@ services:
     ports:
       - "5678:5678"
     env_file:
-      - ./zphilo/.env    # ← こちらも同じファイルを使えます
+      - ./zphilo/.env
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER}

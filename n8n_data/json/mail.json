@@ -1,0 +1,395 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "getUnread",
+        "limit": 1,
+        "readMessages": true,
+        "markAsRead": true,
+        "options": {}
+      },
+      "id": "node1",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2Api": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "YOUR_GMAIL_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "agentType": "Tools Agent",
+        "chatInput": "{{ $json.text }}",
+        "prompt": "Given the following email, determine if a reply is needed. If yes, output 'true' and a brief summary of why. If no, output 'false' and a brief reason. Format your response as a JSON object with 'needsReply' (boolean), 'reason' (string, if no reply needed), and 'summary' (string, if reply needed). Example for reply needed: {\"needsReply\": true, \"summary\": \"Customer asking for product details.\"}. Example for no reply needed: {\"needsReply\": false, \"reason\": \"Automated newsletter.\"}",
+        "options": {},
+        "subNodes": [
+          {
+            "parameters": {
+              "model": "gemini-pro",
+              "options": {}
+            },
+            "id": "node2_sub1",
+            "name": "Google Gemini Chat Model",
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+              1000,
+              400
+            ],
+            "credentials": {
+              "googleGeminiApi": {
+                "id": "YOUR_GOOGLE_GEMINI_CREDENTIAL_ID",
+                "name": "YOUR_GOOGLE_GEMINI_NAME"
+              }
+            }
+          }
+        ]
+      },
+      "id": "node2",
+      "name": "AI Classify Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": [
+          {
+            "value1": "={{ JSON.parse($json.chatOutput).needsReply }}",
+            "value2": "=true",
+            "type": "boolean"
+          }
+        ]
+      },
+      "id": "node3",
+      "name": "IF Needs Reply",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "agentType": "Tools Agent",
+        "chatInput": "Draft a polite and professional email reply based on the following context. Keep it concise and directly address the original email's content. Original Email Subject: {{ $json.subject }}. Original Email Body: {{ $json.text }}. Summary of original email: {{ JSON.parse($json.chatOutput).summary }}. Output only the email body.",
+        "prompt": "",
+        "options": {},
+        "subNodes": [
+          {
+            "parameters": {
+              "model": "gemini-pro",
+              "options": {}
+            },
+            "id": "node4_sub1",
+            "name": "Google Gemini Chat Model",
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+              1400,
+              300
+            ],
+            "credentials": {
+              "googleGeminiApi": {
+                "id": "YOUR_GOOGLE_GEMINI_CREDENTIAL_ID",
+                "name": "YOUR_GOOGLE_GEMINI_NAME"
+              }
+            }
+          }
+        ]
+      },
+      "id": "node4",
+      "name": "AI Generate Reply Draft",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": [
+          {
+            "name": "webhookUrl",
+            "value": "={{ $workflow.webhookUrl('approval') }}"
+          },
+          {
+            "name": "originalMessageId",
+            "value": "={{ $json.id }}"
+          },
+          {
+            "name": "originalSubject",
+            "value": "={{ $json.subject }}"
+          },
+          {
+            "name": "originalFrom",
+            "value": "={{ $json.from }}"
+          },
+          {
+            "name": "replyDraft",
+            "value": "={{ $json.chatOutput }}"
+          }
+        ],
+        "options": {}
+      },
+      "id": "node5",
+      "name": "Set Webhook Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "message": "新しいメールの返信案ができました。\n\n件名: {{ $json.originalSubject }}\n差出人: {{ $json.originalFrom }}\n\n--- 返信案 ---\n{{ $json.replyDraft }}\n\nこの返信案でメールを送信しますか？\n\n承認: {{ $json.webhookUrl }}?approved=true\n却下: {{ $json.webhookUrl }}?approved=false",
+        "options": {}
+      },
+      "id": "node6",
+      "name": "LINE Send Draft for Approval",
+      "type": "n8n-nodes-base.line",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        200
+      ],
+      "credentials": {
+        "lineApi": {
+          "id": "YOUR_LINE_CREDENTIAL_ID",
+          "name": "YOUR_LINE_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "approval",
+        "options": {
+          "responseMode": "lastNode",
+          "responseCode": "200",
+          "responseData": "OK"
+        }
+      },
+      "id": "node7",
+      "name": "Webhook Approval Listener",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": [
+          {
+            "value1": "={{ $json.query.approved }}",
+            "value2": "=true",
+            "type": "boolean"
+          }
+        ]
+      },
+      "id": "node8",
+      "name": "IF Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "send",
+        "to": "{{ $json.originalFrom }}",
+        "subject": "Re: {{ $json.originalSubject }}",
+        "body": "{{ $json.replyDraft }}",
+        "options": {
+          "inReplyTo": "{{ $json.originalMessageId }}"
+        }
+      },
+      "id": "node9",
+      "name": "Gmail Send Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        150
+      ],
+      "credentials": {
+        "gmailOAuth2Api": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "YOUR_GMAIL_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "メールの送信はキャンセルされました。\n\n件名: {{ $json.originalSubject }}",
+        "options": {}
+      },
+      "id": "node10",
+      "name": "LINE Rejection Notification",
+      "type": "n8n-nodes-base.line",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        250
+      ],
+      "credentials": {
+        "lineApi": {
+          "id": "YOUR_LINE_CREDENTIAL_ID",
+          "name": "YOUR_LINE_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "新しいメールがありますが、返信は不要と判断されました。\n\n件名: {{ $json.subject }}\n差出人: {{ $json.from }}\n理由: {{ JSON.parse($json.chatOutput).reason }}",
+        "options": {}
+      },
+      "id": "node11",
+      "name": "LINE No Reply Needed",
+      "type": "n8n-nodes-base.line",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        400
+      ],
+      "credentials": {
+        "lineApi": {
+          "id": "YOUR_LINE_CREDENTIAL_ID",
+          "name": "YOUR_LINE_CREDENTIAL_NAME"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Classify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classify Email": {
+      "main": [
+        [
+          {
+            "node": "IF Needs Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Needs Reply": {
+      "main": [
+        [
+          {
+            "node": "AI Generate Reply Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE No Reply Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate Reply Draft": {
+      "main": [
+        [
+          {
+            "node": "Set Webhook Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Webhook Data": {
+      "main": [
+        [
+          {
+            "node": "LINE Send Draft for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Send Draft for Approval": {
+      "main": [
+        [
+          {
+            "node": "Webhook Approval Listener",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Approval Listener": {
+      "main": [
+        [
+          {
+            "node": "IF Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Approved": {
+      "main": [
+        [
+          {
+            "node": "Gmail Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Rejection Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "errorWorkflow": ""
+  },
+  "name": "Gmail Email Automation with LINE Approval",
+  "active": false
+}
